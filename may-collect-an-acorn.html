@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#6fa88a" />
+  <title>Мэй собирает жёлуди</title>
+  <style>
+    :root {
+      --sky-top: #9ec9b0;
+      --sky-mid: #c5e0c8;
+      --sky-bot: #e8f2dc;
+      --leaf: #3d7a52;
+      --leaf-deep: #2a5a3c;
+      --bark: #6b4a2e;
+      --bark-light: #8b6340;
+      --fur: #8a9a8e;
+      --fur-dark: #5e6d63;
+      --belly: #e8e4d4;
+      --mei-dress: #d45a4a;
+      --mei-skin: #f3c9a8;
+      --mei-hair: #3a2a1a;
+      --satsuki-dress: #e8a848;
+      --acorn: #8b5a2b;
+      --acorn-cap: #4a3020;
+      --soot: #2a2a2a;
+      --ink: #243028;
+      --panel: rgba(255, 252, 245, 0.88);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+      --steps: 5;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Hiragino Maru Gothic ProN", "Avenir Next Rounded", "Yu Gothic", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background: var(--sky-mid);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      padding: var(--safe-top) 0 var(--safe-bot);
+      background:
+        radial-gradient(ellipse 120% 60% at 50% -10%, #b8dcc4 0%, transparent 55%),
+        linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 45%, var(--sky-bot) 100%);
+    }
+
+    .screen {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+      padding: 12px 16px;
+    }
+
+    /* Заставка видна без скрипта. #splash стоит последней в DOM:
+       тап по #game / #end на iOS file:// показывает цель и прячет заставку. */
+    #splash { display: flex; }
+    .screen.active,
+    .screen:target { display: flex; }
+    .screen.active ~ #splash,
+    .screen:target ~ #splash { display: none; }
+
+    button,
+    a.btn {
+      font: inherit;
+      border: none;
+      cursor: pointer;
+      border-radius: 0;
+      padding: 13px 22px;
+      background: var(--leaf);
+      color: #f7fff8;
+      border: 3px solid var(--leaf-deep);
+      box-shadow: 0 4px 0 var(--leaf-deep), inset 0 3px 0 rgba(255, 255, 255, 0.18);
+      transition: transform 0.08s steps(1, end), box-shadow 0.08s steps(1, end);
+    }
+
+    a.btn {
+      display: block;
+      text-align: center;
+      text-decoration: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:active,
+    a.btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 var(--leaf-deep), inset 0 3px 0 rgba(255, 255, 255, 0.18);
+    }
+
+    button.secondary,
+    a.btn.secondary {
+      background: #f0e6c8;
+      color: var(--ink);
+      border-color: #a8915c;
+      box-shadow: 0 4px 0 #a8915c, inset 0 3px 0 rgba(255, 255, 255, 0.5);
+    }
+
+    /* —— Pixel sprites (SVG data URLs built in JS from string grids) —— */
+    .spr {
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      image-rendering: pixelated;
+    }
+
+    .spr.blink {
+      opacity: 0;
+      animation: blink 4.2s steps(1, end) infinite;
+    }
+
+    @keyframes blink {
+      0%, 93% { opacity: 0; }
+      94%, 97% { opacity: 1; }
+      98%, 100% { opacity: 0; }
+    }
+
+    /* —— Splash —— */
+    #splash {
+      align-items: center;
+      justify-content: space-between;
+      text-align: center;
+      gap: 12px;
+    }
+
+    #splash h1 {
+      margin: 8px 0 0;
+      font-size: clamp(1.4rem, 6vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
+
+    #splash .tag {
+      margin: 0;
+      opacity: 0.75;
+      font-size: 0.95rem;
+    }
+
+    .splash-art {
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      width: 100%;
+      max-width: 340px;
+      position: relative;
+      min-height: 220px;
+    }
+
+    .big-totoro {
+      width: min(74vw, 288px);
+      aspect-ratio: 36 / 40;
+      position: relative;
+      z-index: 1;
+      margin-bottom: 12px;
+      animation: floaty 3.2s ease-in-out infinite;
+    }
+
+    .big-totoro .f0 { background-image: var(--spr-big0); }
+    .big-totoro .f1 { background-image: var(--spr-big1); animation-duration: 5.2s; }
+
+    @keyframes floaty {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-7px); }
+    }
+
+    .splash-ground {
+      position: absolute;
+      left: -16px;
+      right: -16px;
+      bottom: 0;
+      height: 24px;
+      background:
+        repeating-linear-gradient(90deg, #6fb46a 0 6px, transparent 6px 9px, #6fb46a 9px 12px, transparent 12px 18px) 0 0 / 100% 6px no-repeat,
+        linear-gradient(180deg, #4f9a5a 0 12px, #3d7a52 12px 24px) 0 6px / 100% 18px no-repeat;
+    }
+
+    .splash-shadow {
+      position: absolute;
+      left: 50%;
+      bottom: 14px;
+      width: min(56vw, 216px);
+      height: 9px;
+      transform: translateX(-50%);
+      background: rgba(42, 58, 48, 0.28);
+      clip-path: polygon(6% 0, 94% 0, 100% 33%, 100% 67%, 94% 100%, 6% 100%, 0 67%, 0 33%);
+    }
+
+    .splash-art .deco {
+      position: absolute;
+      z-index: 2;
+      background-size: 100% 100%;
+    }
+
+    .splash-art .deco.acorn-a { left: 6%; bottom: 18px; width: 27px; height: 33px; background-image: var(--spr-acorn); transform: rotate(-12deg); }
+    .splash-art .deco.acorn-b { right: 9%; bottom: 18px; width: 18px; height: 22px; background-image: var(--spr-acorn); transform: rotate(10deg); }
+    .splash-art .deco.soot-a { right: 5%; bottom: min(296px, calc(74vw * 40 / 36 - 24px)); width: 24px; height: 24px; background-image: var(--spr-soot); animation: sootHop 1.4s steps(1, end) infinite; }
+
+    @keyframes sootHop {
+      0%, 49% { transform: translateY(0); }
+      50%, 100% { transform: translateY(-4px); }
+    }
+
+    .splash-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: min(100%, 280px);
+      padding-bottom: 8px;
+    }
+
+    /* —— HUD / Game —— */
+    #game {
+      padding-bottom: 8px;
+    }
+
+    #game .hud {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: start;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+
+    .house {
+      width: 72px;
+      height: 72px;
+      position: relative;
+      justify-self: start;
+      background: var(--spr-house) no-repeat 0 0 / 100% 100%;
+      image-rendering: pixelated;
+    }
+
+    /* glass area of the house sprite: cols 5–13, rows 10–17 at 3px */
+    .house .window {
+      position: absolute;
+      left: 15px;
+      top: 30px;
+      width: 27px;
+      height: 24px;
+      overflow: hidden;
+    }
+
+    .satsuki {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 27px;
+      height: 27px;
+      background: var(--spr-satsuki) no-repeat 0 0 / 100% 100%;
+      transform: translateY(100%);
+      transition: transform 0.3s steps(4, end);
+    }
+
+    .satsuki.visible {
+      transform: translateY(0);
+    }
+
+    .score-box {
+      text-align: center;
+      background: var(--panel);
+      border-radius: 0;
+      border: 3px solid rgba(42, 90, 60, 0.55);
+      padding: 6px 14px;
+      min-width: 88px;
+      box-shadow: 0 3px 0 rgba(42, 90, 60, 0.25);
+    }
+
+    .meters {
+      display: flex;
+      gap: 6px;
+      justify-self: center;
+      align-items: stretch;
+    }
+
+    .meters .score-box {
+      min-width: 72px;
+      padding: 5px 10px;
+    }
+
+    .speed-box .value {
+      font-size: 1.25rem;
+      color: var(--leaf-deep);
+    }
+
+    .speed-box.max .value {
+      color: #c9543e;
+    }
+
+    .score-box .label {
+      font-size: 0.7rem;
+      opacity: 0.65;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .score-box .value {
+      font-size: 1.75rem;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .penalties {
+      display: flex;
+      gap: 6px;
+      justify-self: end;
+      align-items: center;
+      min-height: 36px;
+      padding: 5px 7px;
+      background: var(--panel);
+      border-radius: 0;
+      border: 3px solid rgba(42, 90, 60, 0.55);
+      box-shadow: 0 3px 0 rgba(42, 90, 60, 0.25);
+    }
+
+    .soot {
+      width: 24px;
+      height: 24px;
+      position: relative;
+      background: var(--spr-soot) no-repeat 0 0 / 100% 100%;
+      image-rendering: pixelated;
+      opacity: 0.1;
+    }
+
+    .soot.on {
+      opacity: 1;
+      animation: sootHop 0.9s steps(1, end) infinite;
+    }
+
+    .soot.half {
+      opacity: 1;
+      animation: sootBlink 0.55s steps(2, end) infinite;
+    }
+
+    @keyframes sootBlink {
+      50% { opacity: 0.15; }
+    }
+
+    /* the compact play area floats in the middle of the free space */
+    .play {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* EG-26 / Egg layout: 4 corners, chutes toward center; rows kept tight like the LCD */
+    .field {
+      flex: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 120px 120px;
+      gap: 0;
+      position: relative;
+      border-radius: 0;
+      overflow: hidden;
+      background:
+        repeating-linear-gradient(90deg, #6fb46a 0 6px, transparent 6px 9px, #6fb46a 9px 12px, transparent 12px 18px) 0 calc(100% - 18px) / 100% 6px no-repeat,
+        linear-gradient(180deg, #4f9a5a 0 6px, #3d7a52 6px 18px) 0 100% / 100% 18px no-repeat,
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(245, 240, 220, 0.35) 0%, transparent 70%),
+        linear-gradient(180deg, rgba(61, 122, 82, 0.08) 0%, rgba(61, 122, 82, 0.22) 100%);
+      border: 3px solid rgba(42, 90, 60, 0.55);
+      box-shadow: 0 3px 0 rgba(42, 90, 60, 0.25);
+    }
+
+    .lane {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      cursor: pointer;
+      z-index: 1;
+    }
+
+    .lane:active {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .lane[data-lane="0"] { grid-area: 1 / 1; }
+    .lane[data-lane="1"] { grid-area: 1 / 2; }
+    .lane[data-lane="2"] { grid-area: 2 / 1; }
+    .lane[data-lane="3"] { grid-area: 2 / 2; }
+
+    /* chute distance from the outer (top/bottom) edge of the lane */
+    .lane { --ct: 46px; }
+
+    .field::before,
+    .field::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 18px;
+      width: 12px;
+      z-index: 0;
+      background:
+        repeating-linear-gradient(180deg, transparent 0 21px, #4a3020 21px 24px, transparent 24px 33px),
+        linear-gradient(90deg, #8b6340 0 3px, #6b4a2e 3px 9px, #4a3020 9px 12px);
+    }
+
+    .field::before { left: 10px; }
+    .field::after { right: 10px; transform: scaleX(-1); }
+
+    .canopy {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 21px;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, #2a5a3c 0 9px, #3d7a52 9px 15px) 0 0 / 100% 15px no-repeat,
+        repeating-linear-gradient(90deg, #3d7a52 0 15px, transparent 15px 21px) 0 15px / 100% 6px no-repeat;
+    }
+
+    /* little Totoro sprite 16×18 at 4px; vertically centred on its chute */
+    .little-totoro {
+      width: 64px;
+      height: 72px;
+      position: absolute;
+      z-index: 2;
+    }
+
+    .lane.left .little-totoro { left: 2px; }
+    .lane.right .little-totoro { right: 2px; }
+    .lane.up .little-totoro { top: calc(var(--ct) - 30px); }
+    .lane.down .little-totoro { bottom: calc(var(--ct) - 30px); }
+
+    .little-totoro .bob {
+      position: absolute;
+      inset: 0;
+      animation: tBob 1.3s steps(1, end) infinite;
+    }
+
+    @keyframes tBob {
+      0%, 49% { transform: translateY(0); }
+      50%, 100% { transform: translateY(-3px); }
+    }
+
+    .little-totoro.chibi .f0 { background-image: var(--spr-chibi0); }
+    .little-totoro.chibi .f1 { background-image: var(--spr-chibi1); }
+    .little-totoro.chu .f0 { background-image: var(--spr-chu0); }
+    .little-totoro.chu .f1 { background-image: var(--spr-chu1); }
+
+    .lane[data-lane="1"] .bob { animation-delay: -0.4s; }
+    .lane[data-lane="2"] .bob { animation-delay: -0.9s; }
+    .lane[data-lane="3"] .bob { animation-delay: -0.2s; }
+    .lane[data-lane="1"] .blink { animation-delay: -1.3s; animation-duration: 3.7s; }
+    .lane[data-lane="2"] .blink { animation-delay: -2.6s; animation-duration: 4.8s; }
+    .lane[data-lane="3"] .blink { animation-delay: -0.7s; animation-duration: 3.9s; }
+
+    .chute {
+      position: absolute;
+      height: 24px;
+      z-index: 2;
+      border-radius: 0;
+      border: 3px solid #4a3020;
+      background:
+        repeating-linear-gradient(90deg, transparent 0 15px, rgba(58, 36, 20, 0.35) 15px 18px),
+        linear-gradient(180deg, #c99461 0 3px, #a8744a 3px 12px, #845634 12px 18px);
+      box-shadow: 0 3px 0 rgba(42, 58, 48, 0.22);
+    }
+
+    .lane.left .chute {
+      left: 62px;
+      right: 18%;
+    }
+
+    .lane.right .chute {
+      right: 62px;
+      left: 18%;
+    }
+
+    .lane.up .chute { top: var(--ct); }
+    .lane.down .chute { bottom: var(--ct); }
+
+    /* acorn sprite 9×11 at 2px, resting in the groove */
+    .acorn {
+      position: absolute;
+      top: 50%;
+      width: 18px;
+      height: 22px;
+      margin-top: -17px;
+      margin-left: -9px;
+      background: var(--spr-acorn) no-repeat 0 0 / 100% 100%;
+      image-rendering: pixelated;
+      z-index: 3;
+    }
+
+    /* Mei sprite 20×26 at 4px, drawn facing right with basket at cols 13–19, rim at row 15.
+       JS puts (left, top) at the chute end (+18px down); margins place the basket there. */
+    .mei {
+      position: absolute;
+      width: 80px;
+      height: 104px;
+      margin-top: -76px;
+      transition: left 0.12s steps(2, end), top 0.12s steps(2, end);
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .mei.face-right { margin-left: -76px; }
+    .mei.face-left { margin-left: -4px; }
+
+    .mei .mei-hop {
+      position: absolute;
+      inset: 0;
+    }
+
+    .mei .mei-spr { background-image: var(--spr-mei); }
+    .mei.face-left .mei-spr { transform: scaleX(-1); }
+
+    .mei.catch .mei-hop {
+      animation: meiHop 0.26s steps(1, end);
+    }
+
+    @keyframes meiHop {
+      0%, 49% { transform: translateY(-8px); }
+      50%, 100% { transform: translateY(0); }
+    }
+
+    .hint {
+      text-align: center;
+      font-size: 0.75rem;
+      opacity: 0.55;
+      margin: 6px 0 0;
+      flex-shrink: 0;
+    }
+
+    /* —— D-pad: a plus-shaped pad turned 45°, so its arms point ↖ ↗ ↙ ↘ —— */
+    .dpad-wrap {
+      --dp: 58px;
+      flex-shrink: 0;
+      height: calc(var(--dp) * 4.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Safari on small iPhones (SE, mini) leaves ~550–630px of height */
+    @media (max-height: 630px) {
+      .dpad-wrap { --dp: 46px; }
+      .hint { display: none; }
+    }
+
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, var(--dp));
+      grid-template-rows: repeat(3, var(--dp));
+      transform: rotate(45deg);
+      filter: drop-shadow(0 4px 0 rgba(42, 58, 48, 0.3));
+    }
+
+    .dp {
+      position: relative;
+      padding: 0;
+      border-radius: 0;
+      touch-action: none;
+      box-shadow: inset 3px 3px 0 rgba(255, 255, 255, 0.22), inset -3px -3px 0 rgba(0, 0, 0, 0.18);
+    }
+
+    .dp:active,
+    .dp.pressed {
+      transform: none;
+      background: #6fb46a;
+      box-shadow: inset -3px -3px 0 rgba(255, 255, 255, 0.22), inset 3px 3px 0 rgba(0, 0, 0, 0.25);
+    }
+
+    .dp.on::before {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border: 3px solid #f2c14e;
+    }
+
+    .dp::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 24px;
+      height: 24px;
+      margin: -12px 0 0 -12px;
+      background: var(--spr-arrow) no-repeat 0 0 / 100% 100%;
+      transform: rotate(-45deg) scale(var(--sx), var(--sy));
+    }
+
+    .dp.n { grid-area: 1 / 2; --sx: 1; --sy: 1; }
+    .dp.e { grid-area: 2 / 3; --sx: 1; --sy: -1; }
+    .dp.s { grid-area: 3 / 2; --sx: -1; --sy: -1; }
+    .dp.w { grid-area: 2 / 1; --sx: -1; --sy: 1; }
+
+    .dp-hub {
+      grid-area: 2 / 2;
+      position: relative;
+      background: var(--leaf-deep);
+    }
+
+    .dp-hub::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 27px;
+      height: 33px;
+      margin: -16px 0 0 -13px;
+      background: var(--spr-acorn) no-repeat 0 0 / 100% 100%;
+      transform: rotate(-45deg);
+    }
+
+    /* —— End —— */
+    #end {
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Catbus sprite 48×22 at 4px dashes along a road at the bottom on game over */
+    .road {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 12px;
+      height: 18px;
+      background:
+        repeating-linear-gradient(90deg, #f3e7c8 0 12px, transparent 12px 24px) 0 6px / 100% 3px no-repeat,
+        linear-gradient(180deg, #b08a5a 0 3px, #8b6a44 3px 18px);
+    }
+
+    .catbus {
+      position: absolute;
+      left: 0;
+      bottom: 24px;
+      width: 192px;
+      height: 88px;
+      z-index: 3;
+      pointer-events: none;
+      transform: translateX(-200px);
+    }
+
+    .catbus .f1 { opacity: 0; }
+
+    #end.run .catbus {
+      animation: catbusRun 2.6s linear forwards;
+    }
+
+    #end.run .catbus .bounce {
+      position: absolute;
+      inset: 0;
+      animation: tBob 0.24s steps(1, end) infinite;
+    }
+
+    #end.run .catbus .f1 {
+      animation: legFrame 0.24s steps(1, end) infinite;
+    }
+
+    .catbus .f0 { background-image: var(--spr-catbus0); }
+    .catbus .f1 { background-image: var(--spr-catbus1); }
+
+    @keyframes catbusRun {
+      from { transform: translateX(-200px); }
+      to { transform: translateX(calc(100vw + 20px)); }
+    }
+
+    @keyframes legFrame {
+      0%, 49% { opacity: 0; }
+      50%, 100% { opacity: 1; }
+    }
+
+    #end.run .fade-in {
+      animation: fadeIn 0.4s steps(4, end) 0.9s both;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    #end h2 {
+      margin: 0;
+      font-size: 1.6rem;
+    }
+
+    #end .final-score {
+      font-size: 2.4rem;
+      font-weight: 700;
+      background: var(--panel);
+      padding: 10px 28px;
+      border-radius: 0;
+      border: 3px solid rgba(42, 90, 60, 0.55);
+      box-shadow: 0 3px 0 rgba(42, 90, 60, 0.25);
+    }
+
+    .pix-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    .pix {
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      image-rendering: pixelated;
+      animation: tBob 1.3s steps(1, end) infinite;
+    }
+
+    .pix:nth-child(2) { animation-delay: -0.45s; }
+    .pix:nth-child(3) { animation-delay: -0.9s; }
+    .pix.soot-l { width: 48px; height: 48px; background-image: var(--spr-soot); }
+
+    #end .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: min(100%, 280px);
+    }
+
+    .flash-catch {
+      animation: pop 0.25s ease;
+    }
+
+    @keyframes pop {
+      50% { transform: scale(1.08); }
+    }
+  </style>
+</head>
+<body>
+  <section id="game" class="screen" aria-label="Игра">
+    <div class="hud">
+      <div class="house" aria-label="Домик Сацуки">
+        <div class="window">
+          <div class="satsuki" id="satsuki"></div>
+        </div>
+      </div>
+      <div class="meters">
+        <div class="score-box">
+          <div class="label">очки</div>
+          <div class="value" id="score">0</div>
+        </div>
+        <div class="score-box speed-box" id="speed-box">
+          <div class="label">темп</div>
+          <div class="value" id="speed">100%</div>
+        </div>
+      </div>
+      <div class="penalties" id="penalties" aria-label="Штрафы"></div>
+    </div>
+
+    <div class="play">
+    <div class="field" id="field">
+      <div class="canopy" aria-hidden="true"></div>
+      <!-- 0 left-up · 1 right-up · 2 left-down · 3 right-down (как EG-26) -->
+      <div class="lane left up" data-lane="0">
+        <div class="little-totoro chibi" aria-hidden="true">
+          <div class="bob"><div class="spr f0"></div><div class="spr f1 blink"></div></div>
+        </div>
+        <div class="chute" id="chute-0"></div>
+      </div>
+      <div class="lane right up" data-lane="1">
+        <div class="little-totoro chu" aria-hidden="true">
+          <div class="bob"><div class="spr f0"></div><div class="spr f1 blink"></div></div>
+        </div>
+        <div class="chute" id="chute-1"></div>
+      </div>
+      <div class="lane left down" data-lane="2">
+        <div class="little-totoro chu" aria-hidden="true">
+          <div class="bob"><div class="spr f0"></div><div class="spr f1 blink"></div></div>
+        </div>
+        <div class="chute" id="chute-2"></div>
+      </div>
+      <div class="lane right down" data-lane="3">
+        <div class="little-totoro chibi" aria-hidden="true">
+          <div class="bob"><div class="spr f0"></div><div class="spr f1 blink"></div></div>
+        </div>
+        <div class="chute" id="chute-3"></div>
+      </div>
+      <div class="mei" id="mei">
+        <div class="mei-hop"><div class="spr mei-spr"></div></div>
+      </div>
+    </div>
+    </div>
+    <p class="hint">Крестовина или тап по углу · клавиатура: стрелки, 1–4</p>
+    <div class="dpad-wrap">
+      <div class="dpad" id="dpad">
+        <button type="button" class="dp w" data-lane="0" aria-label="Влево-вверх"></button>
+        <button type="button" class="dp n" data-lane="1" aria-label="Вправо-вверх"></button>
+        <div class="dp-hub" aria-hidden="true"></div>
+        <button type="button" class="dp s" data-lane="2" aria-label="Влево-вниз"></button>
+        <button type="button" class="dp e" data-lane="3" aria-label="Вправо-вниз"></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="end" class="screen" aria-label="Конец">
+    <div class="pix-row" aria-hidden="true">
+      <div class="pix soot-l"></div>
+      <div class="pix soot-l"></div>
+      <div class="pix soot-l"></div>
+    </div>
+    <h2>Конец партии</h2>
+    <div class="final-score"><span id="final-score">0</span></div>
+    <p class="tag">три сусуватари — пора отдыхать</p>
+    <div class="actions fade-in">
+      <a class="btn" id="btn-again" href="#game">Ещё раз</a>
+      <a class="btn secondary" id="btn-menu" href="#splash">В меню</a>
+    </div>
+    <div class="road" aria-hidden="true"></div>
+    <div class="catbus" aria-hidden="true">
+      <div class="bounce"><div class="spr f0"></div><div class="spr f1"></div></div>
+    </div>
+  </section>
+
+  <section id="splash" class="screen active" aria-label="Заставка">
+    <div>
+      <h1>Мэй собирает жёлуди</h1>
+      <p class="tag">по мотивам «Мой сосед Тоторо»</p>
+    </div>
+    <div class="splash-art" aria-hidden="true">
+      <div class="splash-ground"></div>
+      <div class="splash-shadow"></div>
+      <div class="deco acorn-a"></div>
+      <div class="deco acorn-b"></div>
+      <div class="deco soot-a"></div>
+      <div class="big-totoro">
+        <div class="spr f0"></div>
+        <div class="spr f1 blink"></div>
+      </div>
+    </div>
+    <div class="splash-actions">
+      <a class="btn" id="btn-start" href="#game">Играть</a>
+    </div>
+  </section>
+
+  <script>
+  // #region agent log
+  window.__dbg = function (hyp, loc, msg, data) {
+    var ep = "http://127.0.0.1:7410/ingest/94c21007-163b-4cb8-9efc-3a7463bc340e";
+    if (location.protocol.indexOf("http") === 0 && location.hostname !== "127.0.0.1" && location.hostname !== "localhost") ep = "/ingest/94c21007-163b-4cb8-9efc-3a7463bc340e";
+    try { fetch(ep, { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "4a1857" }, body: JSON.stringify({ sessionId: "4a1857", runId: "post-fix", hypothesisId: hyp, location: "may-collect-an-acorn.html:" + loc, message: msg, data: data, timestamp: Date.now() }) }).catch(function () {}); } catch (e) {}
+  };
+  window.addEventListener("error", function (e) { window.__dbg("A,E", "onerror", "js error", { msg: e.message, line: e.lineno, col: e.colno }); });
+  window.__dbg("A", "boot", "script start", { ua: navigator.userAgent, proto: location.protocol, iw: window.innerWidth, ih: window.innerHeight, vv: window.visualViewport ? [Math.round(visualViewport.width), Math.round(visualViewport.height)] : null, dpr: window.devicePixelRatio, standalone: !!navigator.standalone, pointer: "onpointerdown" in window, dvh: CSS && CSS.supports ? CSS.supports("height", "100dvh") : null });
+  // #endregion
+(function () {
+  "use strict";
+
+  // —— Pixel sprites ——
+  // Each sprite is an array of equal-length strings; one char = one pixel,
+  // "." = transparent, other chars index the palette. sym() mirrors a left half.
+  function sym(half) {
+    return half.map(function (r) { return r + r.split("").reverse().join(""); });
+  }
+
+  function patch(rows, changes) {
+    var out = rows.slice();
+    Object.keys(changes).forEach(function (y) { out[y] = changes[y]; });
+    return out;
+  }
+
+  function spriteURL(name, rows, pal) {
+    var w = rows[0].length;
+    var out = "";
+    rows.forEach(function (row, y) {
+      if (row.length !== w) console.error("sprite " + name + ": row " + y + " is " + row.length + " wide, expected " + w);
+      var x = 0;
+      while (x < row.length) {
+        var ch = row.charAt(x);
+        var len = 1;
+        while (row.charAt(x + len) === ch) len++;
+        if (ch !== ".") {
+          if (!pal[ch]) console.error("sprite " + name + ": no colour for '" + ch + "'");
+          out += '<rect x="' + x + '" y="' + y + '" width="' + len + '" height="1" fill="' + pal[ch] + '"/>';
+        }
+        x += len;
+      }
+    });
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + w + " " + rows.length +
+      '" width="' + w + '" height="' + rows.length + '" shape-rendering="crispEdges">' + out + "</svg>";
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+  }
+
+  var INK = "#2b302d";
+
+  // Big Totoro, 36×40, with a two-leaf sprout on his head
+  var BIG = sym([
+    "......kk..........",
+    "......kgk.........",
+    ".....kggk...kkk...",
+    ".....kggk..kLLlk..",
+    ".....kgggk.kLlllkk",
+    ".....kgggk..kkllkl",
+    ".....kggggk....kkl",
+    "....kgggggkkkkkkkk",
+    "....kghhgggggggggg",
+    "...kghgggggggggggg",
+    "...kgggggggggggggg",
+    "...kgggggwwggggggg",
+    "...kggggwwwwgggggg",
+    "..kgggggwkkwgggggg",
+    "..kgggggwkkwggggkk",
+    "..kggggggwwggggggk",
+    "kkkkkggggggggggggg",
+    "..kggggggkgggggggg",
+    "kkkkkgggggkkkkkkkk",
+    ".kgggggggggkwwwwww",
+    ".kggggggggggkmmmmm",
+    ".kgggggggggggkkmmm",
+    ".kGggggggggggggkkk",
+    ".kGggggggggggbbbbb",
+    ".kGgggggggggbbbbbb",
+    "kGggggggggbbbcbbbc",
+    "kGgggggggbbbcbcbcb",
+    "kGgggggggbbbbbbbbb",
+    "kGggggggbbbcbbbcbb",
+    "kGggggggbbcbcbcbcb",
+    "kGgggggbbbbbbbbbbb",
+    "kGgggggbbbbbbbbbbb",
+    "kGgggggbbbbbbbbbbb",
+    "kGGggggbbbbbbbbbbb",
+    "kGGgggggbbbbbbbbbb",
+    ".kGGgggggbbbbbbbbb",
+    ".kGGggggggbbbbbbbb",
+    "..kGGggggggggggggg",
+    "...kgwgwgwkggggggg",
+    "....kkkkkkkkkkkkkk"
+  ]);
+  var BIG_BLINK = patch(BIG, sym([
+    "...kgggggggggggggg",
+    "...kgggggkkggggggg",
+    "..kgggggkggkgggggg",
+    "..kgggggggggggggkk",
+    "..kggggggggggggggk"
+  ]).reduce(function (m, r, i) { m[11 + i] = r; return m; }, {}));
+  var BIG_PAL = {
+    k: INK, g: "#8e9a93", G: "#737f78", h: "#adb8b1", b: "#efe7cf", B: "#ddd2b3",
+    c: "#6f7a73", w: "#ffffff", m: "#6a3430", L: "#a8d86e", l: "#5fa04a"
+  };
+
+  // Little Totoro, 16×18 (white Chibi / blue Chu share the grid)
+  var LITTLE = sym([
+    "..k.....",
+    ".kgk....",
+    ".kgk....",
+    ".kggk...",
+    ".kgggkkk",
+    "kghggggg",
+    "kggggggg",
+    "kggweggg",
+    "kggeeggn",
+    "kgpggggg",
+    "kgggbbbb",
+    "kggbcbbc",
+    "kGgbbbbb",
+    "kGgbbbbb",
+    "kGggbbbb",
+    ".kGggbbb",
+    "..kGgggg",
+    "...kkkkk"
+  ]);
+  var LITTLE_BLINK = patch(LITTLE, sym(["kggggggg", "kggeeggn"]).reduce(function (m, r, i) {
+    m[7 + i] = r; return m;
+  }, {}));
+  var CHIBI_PAL = { k: INK, g: "#f4f2ec", G: "#cfd5d0", h: "#ffffff", w: "#ffffff", e: "#1b1d1c",
+    n: "#3a403d", b: "#fbf6e6", c: "#b9c0ba", p: "#f4b8ae" };
+  var CHU_PAL = { k: INK, g: "#7f98c2", G: "#627aa3", h: "#a6badb", w: "#ffffff", e: "#1b1d1c",
+    n: "#2b3550", b: "#e3e9f1", c: "#8aa0c6", p: "#d9a6c4" };
+
+  // Mei, 20×26, facing right, basket in front (cols 13–19)
+  var MEI = [
+    ".....kkkkkkk........",
+    "....kkHHHHHHHkk.....",
+    "kk.kHHHhhHHHHHHk.kk.",
+    "kHkoHHHhHHHHHHHokHk.",
+    "kHHoHHHHHHHHHHHoHHk.",
+    ".kkkHHHHHHHHHHHkkk..",
+    "...kHHsHHsHHHsHk....",
+    "...kHssssssssssk....",
+    "...kHsssesssessk....",
+    "...kHsssesssessk....",
+    "...kHssrsssssrsk....",
+    "....ksssssmsssk.....",
+    ".....kkkkkkkkk......",
+    ".....kwwsswwk...kkk.",
+    "....kwwDDDDwwk.k...k",
+    "...kwwkDDDDksskkkkkk",
+    "...kssDDDDDDDkBbBbBk",
+    "...kssDDDDDDDkbBbBbk",
+    "...kdDDDDDDDDkBbBbBk",
+    "..kdDDDDDDDDDkkkkkk.",
+    "..kkkkkkkkkkk.......",
+    "....kssk.kssk.......",
+    "....kssk.kssk.......",
+    "....kwwk.kwwk.......",
+    "...knnnk.knnnk......",
+    "...kkkkk.kkkkk......"
+  ];
+  var MEI_PAL = { k: "#2b2320", H: "#6b4428", h: "#8f6038", o: "#f2a03c", s: "#f7d3b2", e: "#1b1b1b",
+    r: "#f2a090", m: "#b8483e", w: "#fbf7ee", D: "#f0785a", d: "#c9543e", B: "#dcb06a", b: "#a67a44",
+    n: "#e8c050" };
+
+  // Satsuki peeking, 9×9
+  var SATSUKI = [
+    "..kkkkk..",
+    ".kHHHHHk.",
+    "kHHhHHHHk",
+    "kHHsHsHHk",
+    "kHsesesHk",
+    "kHrsssrHk",
+    ".kHsmsHk.",
+    ".kYYYYYk.",
+    "kYYwYwYYk"
+  ];
+  var SATSUKI_PAL = { k: "#2b2320", H: "#3f2818", h: "#5e3e26", s: "#f7d3b2", e: "#1b1b1b",
+    r: "#f2a090", m: "#b8483e", Y: "#f2c14e", w: "#fbf7ee" };
+
+  // Susuwatari, 12×12
+  var SOOT = [
+    "...k.kk.k...",
+    ".k.kkkkkk.k.",
+    "..kssskkkk..",
+    ".kkskkkkkkk.",
+    "kkkwwkkwwkkk",
+    ".kkwekkewkk.",
+    "kkkkkkkkkkkk",
+    ".kkkkkkkkkk.",
+    "kkkkkkkkkkkk",
+    "..kkkkkkkk..",
+    ".k.kkkkkk.k.",
+    "...k.kk.k..."
+  ];
+  var SOOT_PAL = { k: "#1d1d22", s: "#45454f", w: "#ffffff", e: "#000000" };
+
+  // Acorn, 9×11
+  var ACORN = [
+    "....kk...",
+    "...kk....",
+    ".kkkkkkk.",
+    "kCcCcCcck",
+    "kcCcCcCck",
+    "kkkkkkkkk",
+    ".kahaaak.",
+    ".kahaaak.",
+    ".kaaaaak.",
+    "..kaaak..",
+    "...kkk..."
+  ];
+  var ACORN_PAL = { k: "#3a2616", c: "#6b4a2e", C: "#8b6340", a: "#b8733a", h: "#e0a060" };
+
+  // Kusakabe house, 24×24 (window glass cols 5–13, rows 10–17)
+  var HOUSE = [
+    "..........kkkk..........",
+    "........kkRRRRkk........",
+    "......kkRRrrrrRRkk......",
+    "....kkRRrrRRRRrrRRkk....",
+    "..kkRRrrRRRRRRRRrrRRkk..",
+    "kkRRrrRRRRRRRRRRRRrrRRkk",
+    "kkkkkkkkkkkkkkkkkkkkkkkk",
+    "..kWWWWWWWWWWWWWWWWWWk..",
+    "..kWWWWWWWWWWWWWWWWWWk..",
+    "..kWfffffffffffWWWWWWk..",
+    "..kWfgggggggggfWkkkkWk..",
+    "..kWfgggggggggfWkddkWk..",
+    "..kWfgggggggggfWkddkWk..",
+    "..kWfgggggggggfWkddkWk..",
+    "..kWfgggggggggfWkddkWk..",
+    "..kWfgggggggggfWkddkWk..",
+    "..kWfgggggggggfWkddkWk..",
+    "..kWfgggggggggfWkddkWk..",
+    "..kWfffffffffffWkdokWk..",
+    "..kWWWWWWWWWWWWWkddkWk..",
+    "..kWWWWWWWWWWWWWkddkWk..",
+    "..kkkkkkkkkkkkkkkkkkkk..",
+    ".GGGGGGGGGGGGGGGGGGGGGG.",
+    "GGLGGGGGGLGGGGGGGGLGGGGG"
+  ];
+  var HOUSE_PAL = { k: "#3a2a22", R: "#c8553d", r: "#9c3a2a", W: "#f3e7c8", f: "#5a7a48", g: "#9fd0dc",
+    d: "#8b5a36", o: "#f2c14e", G: "#4f9a5a", L: "#6fb46a" };
+
+  // Catbus, 48×22, running right; two leg frames
+  var CATBUS = [
+    ".kcck.................................k.....k...",
+    "kcccck...............................kok...kok..",
+    "kcccck..............................kook..kook..",
+    "kooook.kkkkkkkkkkkkkkkkkkkkkkkkkkkkkoookkkoook..",
+    "ksssskkhhhhhhhshhhhhhhshhhhhhhshhhhhhhhhhhhhhhk.",
+    "kooookokkkkkkkskkkkkkkskkkkkkksoookkkkkokkkkkook",
+    ".koooookWWWWWkskWWWWWkskWWWWWksoookyyykokyyykook",
+    ".koooookwwwwwkskwwwwwkskwwwwwksoookyYykokyYykook",
+    "..kkkookwwwwwkskwwwwwkskwwwwwksoookyyykokyyykook",
+    "....kookwwwwwkskwwwwwkskwwwwwksoookkkkkokkkkkook",
+    ".....kokkkkkkkskkkkkkkskkkkkkksookkkkkkkkkkkkkk.",
+    ".....koooossoosooossoosooossoosooottTttTttTtttok",
+    ".....koooossoosooossoosooossoosoookmmmmmmmmmmkok",
+    ".....koocccccccccccccccccccccccccccckkkkkkkkoook",
+    ".....koocccccccccccccccccccccccccccccccccccooook",
+    "......kocccccccccccccccccccccccccccccccccccoook.",
+    ".......kkOOkkkkkOOkkkOOkkkkkOOkkkOOkkkkkOOkkkk..",
+    "........kOOk...kOOk.kOOk...kOOk.kOOk...kOOk.....",
+    "........kOOk....kOOkkOOk....kOOkkOOk....kOOk....",
+    "........kOOk....kccckOOk....kccckOOk....kccck...",
+    ".......kccck.....kkkccck.....kkkccck.....kkk....",
+    "........kkk.........kkk.........kkk............."
+  ];
+  var CATBUS_B = patch(CATBUS, {
+    16: ".......kkkOOkkkOOkkkkkOOkkkOOkkkkkOOkkkOOkkkkk..",
+    17: ".........kOOk.kOOk...kOOk.kOOk...kOOk.kOOk......",
+    18: "..........kOOkkOOk....kOOkkOOk....kOOkkOOk......",
+    19: "..........kccckOOk....kccckOOk....kccckOOk......",
+    20: "...........kkkccck.....kkkccck.....kkkccck......",
+    21: "..............kkk.........kkk.........kkk......."
+  });
+  var CATBUS_PAL = { k: "#3a2412", o: "#e0902c", h: "#f2b458", O: "#b86a1e", s: "#7a4a1c", c: "#f3d9a0",
+    w: "#fff3c4", W: "#e8d08a", y: "#fff27a", Y: "#f5a800", t: "#ffffff", T: "#d8d2c4", m: "#5a1e14" };
+
+  // D-pad arrow, 6×6, pointing to the top-right corner (flipped per button in CSS)
+  var ARROW = [
+    "wwwwww",
+    ".wwwww",
+    "..wwww",
+    "...www",
+    "....ww",
+    ".....w"
+  ];
+
+  var root = document.documentElement.style;
+  [
+    ["big0", BIG, BIG_PAL], ["big1", BIG_BLINK, BIG_PAL],
+    ["chibi0", LITTLE, CHIBI_PAL], ["chibi1", LITTLE_BLINK, CHIBI_PAL],
+    ["chu0", LITTLE, CHU_PAL], ["chu1", LITTLE_BLINK, CHU_PAL],
+    ["mei", MEI, MEI_PAL], ["satsuki", SATSUKI, SATSUKI_PAL],
+    ["soot", SOOT, SOOT_PAL], ["acorn", ACORN, ACORN_PAL], ["house", HOUSE, HOUSE_PAL],
+    ["catbus0", CATBUS, CATBUS_PAL], ["catbus1", CATBUS_B, CATBUS_PAL], ["arrow", ARROW, { w: "#fff6dc" }]
+  ].forEach(function (s) {
+    root.setProperty("--spr-" + s[0], spriteURL(s[0], s[1], s[2]));
+  });
+  // #region agent log
+  (function () {
+    var bt = document.querySelector(".big-totoro .spr.f0");
+    var bg = bt ? getComputedStyle(bt).backgroundImage : "no-el";
+    window.__dbg("E", "sprites", "sprites applied", { varLen: (root.getPropertyValue("--spr-big0") || "").length, bgStart: String(bg).slice(0, 40), bgLen: String(bg).length, btW: bt ? bt.getBoundingClientRect().width : -1 });
+  })();
+  // #endregion
+
+  var STEPS = 5;
+  var MAX_PENALTY = 3;
+  var LANES = 4;
+
+  var state = {
+    screen: "splash",
+    score: 0,
+    penalty: 0,
+    mei: 0,
+    acorns: [],
+    satsuki: false,
+    cleared200: false,
+    cleared500: false,
+    wrapCount: 0,
+    caught: 0,
+    running: false,
+    lastId: 0
+  };
+
+  var els = {
+    splash: document.getElementById("splash"),
+    game: document.getElementById("game"),
+    end: document.getElementById("end"),
+    score: document.getElementById("score"),
+    speed: document.getElementById("speed"),
+    speedBox: document.getElementById("speed-box"),
+    finalScore: document.getElementById("final-score"),
+    penalties: document.getElementById("penalties"),
+    satsuki: document.getElementById("satsuki"),
+    mei: document.getElementById("mei"),
+    field: document.getElementById("field"),
+    dpadBtns: document.querySelectorAll("#dpad .dp"),
+    chutes: [
+      document.getElementById("chute-0"),
+      document.getElementById("chute-1"),
+      document.getElementById("chute-2"),
+      document.getElementById("chute-3")
+    ]
+  };
+
+  var tickTimer = null;
+  var spawnTimer = null;
+  var satsukiTimer = null;
+
+  function showScreen(name) {
+    state.screen = name;
+    ["splash", "game", "end"].forEach(function (id) {
+      els[id].classList.toggle("active", id === name);
+    });
+  }
+
+  var BASE_STEP = 900;
+
+  // +5% every 5 caught acorns, capped at 200%; `caught` survives the 999 wrap
+  function speed() {
+    return Math.min(2, 1 + Math.floor(state.caught / 5) * 0.05);
+  }
+
+  function stepInterval() {
+    return Math.round(BASE_STEP / speed());
+  }
+
+  function spawnInterval() {
+    return Math.round(stepInterval() * 1.35);
+  }
+
+  // 0 left-up · 1 right-up · 2 left-down · 3 right-down
+  function isLeft(lane) { return lane === 0 || lane === 2; }
+  function isUp(lane) { return lane === 0 || lane === 1; }
+
+  function laneFrom(sideLeft, levelUp) {
+    if (sideLeft && levelUp) return 0;
+    if (!sideLeft && levelUp) return 1;
+    if (sideLeft && !levelUp) return 2;
+    return 3;
+  }
+
+  function setMei(lane) {
+    state.mei = Math.max(0, Math.min(LANES - 1, lane));
+    updateMeiPos();
+  }
+
+  function updateMeiPos() {
+    var chute = els.chutes[state.mei];
+    if (!chute) return;
+    var fieldRect = els.field.getBoundingClientRect();
+    var chuteRect = chute.getBoundingClientRect();
+    var catchX;
+    if (isLeft(state.mei)) {
+      catchX = chuteRect.right - fieldRect.left - 8;
+    } else {
+      catchX = chuteRect.left - fieldRect.left + 8;
+    }
+    var catchY = chuteRect.top - fieldRect.top + chuteRect.height / 2 + 18;
+    els.mei.style.left = catchX + "px";
+    els.mei.style.top = catchY + "px";
+    // #region agent log
+    window.__dbg("C", "updateMeiPos", "mei pos", { lane: state.mei, x: Math.round(catchX), y: Math.round(catchY), fieldW: Math.round(fieldRect.width), fieldH: Math.round(fieldRect.height), chute: [Math.round(chuteRect.left), Math.round(chuteRect.top), Math.round(chuteRect.width), Math.round(chuteRect.height)] });
+    // #endregion
+    // Mei stands in the centre gap and faces the chute she is catching from.
+    els.mei.classList.toggle("face-left", isLeft(state.mei));
+    els.mei.classList.toggle("face-right", !isLeft(state.mei));
+    els.dpadBtns.forEach(function (b) {
+      b.classList.toggle("on", Number(b.getAttribute("data-lane")) === state.mei);
+    });
+  }
+
+  var catchTimer = null;
+  function meiCatch() {
+    els.mei.classList.remove("catch");
+    void els.mei.offsetWidth;
+    els.mei.classList.add("catch");
+    clearTimeout(catchTimer);
+    catchTimer = setTimeout(function () { els.mei.classList.remove("catch"); }, 300);
+  }
+
+  function renderScore() {
+    els.score.textContent = String(state.score);
+  }
+
+  function renderSpeed() {
+    var pct = Math.round(speed() * 100);
+    els.speed.textContent = pct + "%";
+    els.speedBox.classList.toggle("max", pct >= 200);
+  }
+
+  function renderPenalties() {
+    els.penalties.innerHTML = "";
+    var full = Math.floor(state.penalty);
+    var hasHalf = state.penalty - full >= 0.5;
+    var i;
+    for (i = 0; i < 3; i++) {
+      var div = document.createElement("div");
+      div.className = "soot";
+      if (i < full) {
+        div.classList.add("on");
+      } else if (i === full && hasHalf) {
+        div.classList.add("half");
+      }
+      els.penalties.appendChild(div);
+    }
+  }
+
+  function renderAcorns() {
+    els.chutes.forEach(function (chute) {
+      chute.querySelectorAll(".acorn").forEach(function (n) {
+        n.remove();
+      });
+    });
+    state.acorns.forEach(function (a) {
+      var el = document.createElement("div");
+      el.className = "acorn";
+      el.style.transform = "rotate(" + (isLeft(a.lane) ? 90 : -90) * a.step + "deg)";
+      var t = a.step / (STEPS - 1);
+      var leftPct;
+      if (isLeft(a.lane)) {
+        leftPct = 8 + t * 84;
+      } else {
+        leftPct = 92 - t * 84;
+      }
+      el.style.left = leftPct + "%";
+      els.chutes[a.lane].appendChild(el);
+    });
+  }
+
+  function addScore(n) {
+    var before = stepInterval();
+    state.caught += n;
+    state.score += n;
+    if (state.score >= 999) {
+      state.score = 0;
+      state.wrapCount += 1;
+      state.cleared200 = false;
+      state.cleared500 = false;
+    }
+    if (state.score >= 200 && !state.cleared200) {
+      state.cleared200 = true;
+      clearPenalties();
+    }
+    if (state.score >= 500 && !state.cleared500) {
+      state.cleared500 = true;
+      clearPenalties();
+    }
+    renderScore();
+    renderSpeed();
+    els.score.classList.remove("flash-catch");
+    void els.score.offsetWidth;
+    els.score.classList.add("flash-catch");
+    // #region agent log
+    window.__dbg("SPEED", "addScore", "speed", { caught: state.caught, score: state.score, speed: speed(), step: stepInterval(), spawn: spawnInterval(), resched: stepInterval() !== before, ui: els.speed.textContent });
+    // #endregion
+    if (stepInterval() !== before) rescheduleTick();
+  }
+
+  function clearPenalties() {
+    state.penalty = 0;
+    renderPenalties();
+  }
+
+  function addPenalty(amount) {
+    state.penalty += amount;
+    renderPenalties();
+    if (state.penalty >= MAX_PENALTY) {
+      gameOver();
+    }
+  }
+
+  function trySpawn() {
+    if (!state.running) return;
+
+    var blockedTop = {};
+    state.acorns.forEach(function (a) {
+      if (a.step === 0) blockedTop[a.lane] = true;
+    });
+
+    var candidates = [];
+    var i;
+    for (i = 0; i < LANES; i++) {
+      if (blockedTop[i]) continue;
+      candidates.push(i);
+    }
+
+    if (!candidates.length) return;
+    var lane = candidates[Math.floor(Math.random() * candidates.length)];
+    state.lastId += 1;
+    state.acorns.push({ id: state.lastId, lane: lane, step: 0 });
+    renderAcorns();
+  }
+
+  function tick() {
+    if (!state.running) return;
+    var next = [];
+    var i;
+    for (i = 0; i < state.acorns.length; i++) {
+      var a = state.acorns[i];
+      var step = a.step + 1;
+      if (step >= STEPS) {
+        if (state.mei === a.lane) {
+          addScore(1);
+          meiCatch();
+        } else {
+          addPenalty(state.satsuki ? 0.5 : 1);
+          if (!state.running) return;
+        }
+      } else {
+        next.push({ id: a.id, lane: a.lane, step: step });
+      }
+    }
+    state.acorns = next;
+    renderAcorns();
+  }
+
+  function rescheduleTick() {
+    if (tickTimer) clearInterval(tickTimer);
+    if (spawnTimer) clearInterval(spawnTimer);
+    if (!state.running) return;
+    tickTimer = setInterval(tick, stepInterval());
+    spawnTimer = setInterval(trySpawn, spawnInterval());
+  }
+
+  function scheduleSatsuki() {
+    if (satsukiTimer) clearTimeout(satsukiTimer);
+    if (!state.running) return;
+
+    var hideDelay = 1800 + Math.random() * 1600;
+    var showDelay = 3500 + Math.random() * 4500;
+
+    if (state.satsuki) {
+      satsukiTimer = setTimeout(function () {
+        state.satsuki = false;
+        els.satsuki.classList.remove("visible");
+        scheduleSatsuki();
+      }, hideDelay);
+    } else {
+      satsukiTimer = setTimeout(function () {
+        state.satsuki = true;
+        els.satsuki.classList.add("visible");
+        scheduleSatsuki();
+      }, showDelay);
+    }
+  }
+
+  function stopLoops() {
+    state.running = false;
+    if (tickTimer) clearInterval(tickTimer);
+    if (spawnTimer) clearInterval(spawnTimer);
+    if (satsukiTimer) clearTimeout(satsukiTimer);
+    tickTimer = spawnTimer = satsukiTimer = null;
+  }
+
+  function startGame() {
+    stopLoops();
+    els.end.classList.remove("run");
+    state.score = 0;
+    state.penalty = 0;
+    state.mei = 0;
+    state.acorns = [];
+    state.satsuki = false;
+    state.cleared200 = false;
+    state.cleared500 = false;
+    state.wrapCount = 0;
+    state.caught = 0;
+    state.running = true;
+    els.satsuki.classList.remove("visible");
+    renderScore();
+    renderSpeed();
+    renderPenalties();
+    renderAcorns();
+    showScreen("game");
+    requestAnimationFrame(function () {
+      // #region agent log
+      (function () {
+        var r = function (el) { if (!el) return null; var b = el.getBoundingClientRect(); return [Math.round(b.top), Math.round(b.bottom), Math.round(b.height)]; };
+        window.__dbg("B", "startGame", "layout at start", { ih: window.innerHeight, vvH: window.visualViewport ? Math.round(visualViewport.height) : null, docH: document.documentElement.clientHeight, bodyScrollH: document.body.scrollHeight, gameScrollH: els.game.scrollHeight, gameClientH: els.game.clientHeight, hud: r(document.querySelector("#game .hud")), field: r(els.field), hint: r(document.querySelector(".hint")), dpad: r(document.getElementById("dpad")), dpadWrap: r(document.querySelector(".dpad-wrap")) });
+      })();
+      // #endregion
+      updateMeiPos();
+      trySpawn();
+      rescheduleTick();
+      scheduleSatsuki();
+    });
+  }
+
+  function gameOver() {
+    stopLoops();
+    els.finalScore.textContent = String(state.score);
+    els.end.classList.remove("run");
+    if (location.hash !== "#end") location.hash = "#end";
+    else showScreen("end");
+    void els.end.offsetWidth;
+    els.end.classList.add("run");
+  }
+
+  function route() {
+    var id = location.hash.replace(/^#/, "");
+    // #region agent log
+    window.__dbg("A", "route", "hash", { hash: id || "(empty)" });
+    // #endregion
+    if (id === "game") {
+      startGame();
+      return;
+    }
+    if (id === "end") {
+      showScreen("end");
+      return;
+    }
+    stopLoops();
+    els.end.classList.remove("run");
+    showScreen("splash");
+  }
+
+  window.addEventListener("hashchange", route);
+  if (location.hash === "#game" || location.hash === "#end") route();
+
+  els.dpadBtns.forEach(function (btn) {
+    var lane = Number(btn.getAttribute("data-lane"));
+    function release() { btn.classList.remove("pressed"); }
+    btn.addEventListener("pointerdown", function (e) {
+      // #region agent log
+      window.__dbg("D", "dpad", "dpad pointerdown", { lane: lane, type: e.pointerType, running: state.running, y: Math.round(e.clientY), ih: window.innerHeight });
+      // #endregion
+      e.preventDefault();
+      btn.classList.add("pressed");
+      if (state.running) setMei(lane);
+    });
+    btn.addEventListener("pointerup", release);
+    btn.addEventListener("pointercancel", release);
+    btn.addEventListener("pointerleave", release);
+    btn.addEventListener("click", function (e) {
+      if (e.detail === 0 && state.running) setMei(lane);
+    });
+  });
+
+  els.field.querySelectorAll(".lane").forEach(function (lane) {
+    lane.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      if (!state.running) return;
+      setMei(Number(lane.getAttribute("data-lane")));
+    });
+  });
+
+  window.addEventListener("keydown", function (e) {
+    if (state.screen !== "game" || !state.running) return;
+    var left = isLeft(state.mei);
+    var up = isUp(state.mei);
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setMei(laneFrom(true, up));
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setMei(laneFrom(false, up));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setMei(laneFrom(left, true));
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setMei(laneFrom(left, false));
+    } else if (e.key === "1" || e.key === "q" || e.key === "Q") {
+      e.preventDefault();
+      setMei(0);
+    } else if (e.key === "2" || e.key === "w" || e.key === "W" || e.key === "e" || e.key === "E") {
+      e.preventDefault();
+      setMei(1);
+    } else if (e.key === "3" || e.key === "a" || e.key === "A") {
+      e.preventDefault();
+      setMei(2);
+    } else if (e.key === "4" || e.key === "s" || e.key === "S" || e.key === "d" || e.key === "D") {
+      e.preventDefault();
+      setMei(3);
+    }
+  });
+
+  window.addEventListener("resize", function () {
+    // #region agent log
+    window.__dbg("B,C", "resize", "resize", { screen: state.screen, iw: window.innerWidth, ih: window.innerHeight, vvH: window.visualViewport ? Math.round(visualViewport.height) : null });
+    // #endregion
+    if (state.screen === "game") updateMeiPos();
+  });
+
+  window.addEventListener("orientationchange", function () {
+    setTimeout(updateMeiPos, 200);
+  });
+
+  document.body.addEventListener("touchmove", function (e) {
+    if (state.screen === "game") e.preventDefault();
+  }, { passive: false });
+
+  renderPenalties();
+})();
+  </script>
+</body>
+</html>
